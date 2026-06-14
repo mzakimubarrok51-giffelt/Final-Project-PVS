@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Inazuma Cube 3D — Z3 Solver</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+:root{
+  --color-background-primary:#ffffff;
+  --color-background-secondary:#f5f5f7;
+  --color-text-primary:#1a1a1a;
+  --color-text-secondary:#6b6b6b;
+  --color-border-tertiary:#e0e0e0;
+  --color-border-secondary:#cfcfcf;
+  --border-radius-lg:14px;
+  --border-radius-md:8px;
+}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:#0e0e16;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  padding:20px;
+  box-sizing:border-box;
+}
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+.wrap{width:100%;max-width:900px;}
+
+.sc{position:relative;height:540px;border-radius:var(--border-radius-lg);border:.5px solid var(--color-border-tertiary);overflow:hidden}
+.sc canvas{position:absolute;inset:0;width:100%;height:100%}
+#lbs{position:absolute;inset:0;pointer-events:none}
+.lb{position:absolute;transform:translate(-50%,-60%);pointer-events:none;text-align:center}
+.lp{display:inline-block;background:rgba(0,0,0,.52);border-radius:7px;padding:3px 10px}
+.ln{font-size:11px;color:rgba(255,255,255,.6);letter-spacing:1.2px}
+.ls{font-size:15px;font-weight:500}
+.lt{font-size:10px;color:rgba(255,255,255,.38)}
+#pnl{position:absolute;right:12px;top:12px;width:240px;background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px}
+.ph{font-size:14px;font-weight:500;color:var(--color-text-primary);margin:0 0 12px;display:flex;align-items:center;gap:6px}
+.sl{font-size:11px;color:var(--color-text-secondary);letter-spacing:1px;text-transform:uppercase;margin:10px 0 5px}
+.cb{display:block;width:100%;text-align:left;margin-bottom:3px;font-size:12px;padding:5px 8px;border-radius:6px;border:.5px solid transparent;background:transparent;cursor:pointer}
+.cb:hover{background:var(--color-background-secondary)}
+.cb.a{background:var(--color-background-secondary);border-color:var(--color-border-secondary)}
+.sr{display:flex;gap:4px;flex-wrap:wrap}
+.sb{padding:2px 9px;border-radius:20px;font-size:13px;font-weight:500}
+.cr{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}
+.ck{font-size:11px;padding:2px 6px;border-radius:4px;background:var(--color-background-secondary);color:var(--color-text-secondary);border:.5px solid var(--color-border-tertiary)}
+.ck.on{background:#FAEEDA;color:#633806;border-color:#EF9F27}
+#st{margin-top:8px;padding:8px;border-radius:var(--border-radius-md);text-align:center;font-size:12px;font-weight:500}
+.so{background:#EAF3DE;color:#27500A;border:.5px solid #639922}
+.sn{background:var(--color-background-secondary);color:var(--color-text-secondary);border:.5px solid var(--color-border-tertiary)}
+.su{background:#FCEBEB;color:#791F1F;border:.5px solid #E24B4A}
+.sz{background:#E6F1FB;color:#0C447C;border:.5px solid #378ADD}
+.br{display:flex;gap:6px;margin-top:8px}
+.br button{flex:1;font-size:12px;padding:6px 0;border-radius:6px;border:.5px solid var(--color-border-secondary);background:var(--color-background-primary);cursor:pointer}
+.br button:hover{background:var(--color-background-secondary)}
+.br button:disabled{opacity:.5;cursor:not-allowed}
+#ht{margin-top:8px;font-size:11px;color:var(--color-text-secondary);text-align:center;line-height:1.6}
+#ov{position:absolute;bottom:0;left:0;right:0;background:#EAF3DE;border-top:.5px solid #639922;color:#27500A;text-align:center;padding:9px 14px;font-size:13px;font-weight:500;transform:translateY(100%);transition:transform .35s}
+#ov.on{transform:translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h2 class="sr-only">Inazuma Cube 3D — visualizer interaktif puzzle constraint satisfaction menggunakan Three.js dan Z3 solver (Python backend)</h2>
+
+<div class="sc" id="sc">
+  <canvas id="c"></canvas>
+  <div id="lbs"></div>
+  <div id="pnl">
+    <p class="ph"><i class="ti ti-cube" aria-hidden="true"></i> Inazuma Cube 3D (Z3)</p>
+    <div class="sl">Studi kasus</div>
+    <div id="cbs">Memuat...</div>
+    <div class="sl">State saat ini</div>
+    <div class="sr" id="cs"></div>
+    <div class="sl">Target state</div>
+    <div class="sr" id="ts"></div>
+    <div class="sl">Klik per kubus</div>
+    <div class="cr" id="ci"></div>
+    <div id="st" class="sn">Belum selesai</div>
+    <div class="br">
+      <button id="bsv">Auto solve (Z3)</button>
+      <button id="brs">Reset</button>
+    </div>
+    <div id="ht">Klik kubus → ubah state<br>Drag → putar kamera · Scroll → zoom<br>Solver: Z3 via /api/solve</div>
+  </div>
+  <div id="ov" role="status" aria-live="polite"></div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const S3=[0x1D9E75,0x378ADD,0xEF9F27,0xD85A30];
+const SE=[0x04342C,0x042C53,0x412402,0x4A1B0C];
+const SH=['#1D9E75','#378ADD','#EF9F27','#D85A30'];
+const SBG=['#E1F5EE','#E6F1FB','#FAEEDA','#FAECE7'];
+const SFG=['#085041','#0C447C','#633806','#712B13'];
+
+// Loaded from the Flask/Z3 backend via /api/cases
+let CASES = [];
+
+const cv=document.getElementById('c');
+const ren=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+ren.setPixelRatio(Math.min(devicePixelRatio,2));
+ren.shadowMap.enabled=true;
+ren.setClearColor(0x090612);
+
+const sc=new THREE.Scene();
+sc.fog=new THREE.FogExp2(0x090612,.038);
+
+const cam=new THREE.PerspectiveCamera(55,1,.1,100);
+let th=0.1,ph=1.0,R=11;
+const tgt=new THREE.Vector3();
+function setCam(){cam.position.set(tgt.x+R*Math.sin(ph)*Math.sin(th),tgt.y+R*Math.cos(ph),tgt.z+R*Math.sin(ph)*Math.cos(th));cam.lookAt(tgt);}
+setCam();
+
+sc.add(new THREE.AmbientLight(0x1A0A3A,2.2));
+const dl=new THREE.DirectionalLight(0xFFFFFF,.65);dl.position.set(4,9,3);dl.castShadow=true;sc.add(dl);
+const pl=new THREE.PointLight(0x4020AA,1.8,25);pl.position.set(-3,8,-3);sc.add(pl);
+const gnd=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0x080510,roughness:.95}));
+gnd.rotation.x=-Math.PI/2;gnd.position.y=-1.5;gnd.receiveShadow=true;sc.add(gnd);
+sc.add(new THREE.GridHelper(28,28,0x15066A,0x0B0440));
+
+let ci=0,cst=[],ck=[],cg=new THREE.Group(),cm=[],lb=[],ln=[],hov=null;
+sc.add(cg);
+
+function build(idx){
+  hov=null;ci=idx;
+  while(cg.children.length)cg.remove(cg.children[0]);
+  lb.forEach(e=>e.remove());
+  lb=[];cm=[];ln=[];
+  document.getElementById('lbs').innerHTML='';
+
+  const{s,t,A}=CASES[idx];const n=s.length;
+  cst=[...s];ck=Array(n).fill(0);
+  const sp=2.3,ox=-(n-1)*sp/2;
+
+  for(let i=0;i<n;i++){
+    const geo=new THREE.BoxGeometry(1.5,1.5,1.5);
+    const mat=new THREE.MeshStandardMaterial({color:S3[cst[i]],emissive:SE[cst[i]],emissiveIntensity:.4,metalness:.2,roughness:.5});
+    const mesh=new THREE.Mesh(geo,mat);
+    mesh.position.set(ox+i*sp,.1,0);mesh.castShadow=true;mesh.userData.i=i;
+    cg.add(mesh);cm.push(mesh);
+    mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),new THREE.LineBasicMaterial({color:0xFFFFFF,transparent:true,opacity:.14})));
+    const d=document.createElement('div');d.className='lb';
+    d.innerHTML=`<div class="lp"><div class="ln">K${i+1}</div><div class="ls" style="color:${SH[cst[i]]}">${cst[i]}</div><div class="lt">→ ${t[i]}</div></div>`;
+    document.getElementById('lbs').appendChild(d);lb.push(d);
+  }
+
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++){
+    if(A[i][j]&&i!==j){
+      const p1=cm[j].position.clone();p1.y+=.9;
+      const p2=cm[i].position.clone();p2.y+=.9;
+      const mid=p1.clone().lerp(p2,.5);mid.y+=.5;
+      const curve=new THREE.CatmullRomCurve3([p1,mid,p2]);
+      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(14)),new THREE.LineBasicMaterial({color:0x4A28A0,transparent:true,opacity:.3}));
+      cg.add(line);ln.push(line);
+    }
+  }
+  R=Math.max(9,n*2.5);setCam();
+  updCol();updUI();updCBs();
+}
+
+function updCol(){
+  for(let i=0;i<cm.length;i++){
+    cm[i].material.color.setHex(S3[cst[i]]);
+    cm[i].material.emissive.setHex(SE[cst[i]]);
+    const ls=lb[i].querySelector('.ls');ls.textContent=cst[i];ls.style.color=SH[cst[i]];
+  }
+  updUI();
+}
+
+function doClick(i){
+  const{A}=CASES[ci];const n=cst.length;
+  ck[i]++;
+  for(let k=0;k<n;k++)if(A[k][i])cst[k]=(cst[k]+1)%4;
+  bounce(i);updCol();chkSolve();
+}
+
+function bounce(i){
+  let t=0;const m=cm[i];
+  const go=()=>{t+=.15;if(t<=1){m.scale.setScalar(1+.2*Math.sin(t*Math.PI));requestAnimationFrame(go);}else m.scale.setScalar(1);};go();
+  ln.forEach(l=>{let t2=0;const f=()=>{t2+=.12;if(t2<1){l.material.opacity=.3+.44*Math.sin(t2*Math.PI);requestAnimationFrame(f);}else l.material.opacity=.3;};f();});
+}
+
+function chkSolve(){
+  const{t}=CASES[ci];
+  if(cst.every((s,i)=>s===t[i])){
+    const ov=document.getElementById('ov');
+    ov.textContent='Puzzle selesai! Semua constraint terpenuhi';
+    ov.classList.add('on');setTimeout(()=>ov.classList.remove('on'),3200);
+  }
+}
+
+// ---- Z3 backend integration --------------------------------------------
+async function solveWithZ3(){
+  const btn=document.getElementById('bsv');
+  const st=document.getElementById('st');
+  btn.disabled=true;
+  st.textContent='Menghubungi Z3 solver...';st.className='sz';
+  try{
+    const res=await fetch(`/api/solve/${ci}`);
+    const data=await res.json();
+    if(!data.sat){
+      st.textContent='UNSAT — tidak ada solusi (Z3)';st.className='su';
+      btn.disabled=false;
+      return;
+    }
+    const{s}=CASES[ci];cst=[...s];ck=Array(s.length).fill(0);updCol();
+    const sol=data.solution;
+    const seq=[];sol.forEach((c,i)=>{for(let k=0;k<c;k++)seq.push(i);});
+    let si=0;
+    const nx=()=>{if(si>=seq.length){btn.disabled=false;return;}doClick(seq[si++]);setTimeout(nx,560);};
+    setTimeout(nx,220);
+  }catch(err){
+    st.textContent='Error: tidak bisa menghubungi backend';st.className='su';
+    btn.disabled=false;
+    console.error(err);
+  }
+}
+
+function updUI(){
+  const{t}=CASES[ci];const solved=cst.every((s,i)=>s===t[i]);
+  document.getElementById('cs').innerHTML=cst.map(s=>`<div class="sb" style="background:${SBG[s]};color:${SFG[s]}">${s}</div>`).join('');
+  document.getElementById('ts').innerHTML=t.map(s=>`<div class="sb" style="background:${SBG[s]};color:${SFG[s]}">${s}</div>`).join('');
+  document.getElementById('ci').innerHTML=ck.map((c,i)=>`<div class="ck ${c?'on':''}">K${i+1}: ×${c}</div>`).join('');
+  const st=document.getElementById('st');
+  if(solved){st.textContent='Puzzle selesai!';st.className='so';}
+  else{st.textContent='Belum selesai';st.className='sn';}
+}
+
+function updCBs(){document.querySelectorAll('.cb').forEach((b,i)=>{b.className='cb'+(i===ci?' a':'');});}
+
+document.getElementById('bsv').onclick=solveWithZ3;
+document.getElementById('brs').onclick=()=>build(ci);
+
+let pDn=false,pSX=0,pSY=0,pCX=0,pCY=0;
+cv.addEventListener('pointerdown',e=>{pDn=true;pSX=pCX=e.clientX;pSY=pCY=e.clientY;cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{if(!pDn)return;const dx=e.clientX-pCX,dy=e.clientY-pCY;pCX=e.clientX;pCY=e.clientY;th-=dx*.009;ph=Math.max(.2,Math.min(Math.PI*.83,ph+dy*.009));setCam();});
+cv.addEventListener('pointerup',e=>{
+  if(Math.hypot(e.clientX-pSX,e.clientY-pSY)<8){
+    const r=cv.getBoundingClientRect();
+    const mx=(e.clientX-r.left)/r.width*2-1,my=-((e.clientY-r.top)/r.height)*2+1;
+    const rc=new THREE.Raycaster();rc.setFromCamera({x:mx,y:my},cam);
+    const hits=rc.intersectObjects(cm);if(hits.length)doClick(hits[0].object.userData.i);
+  }
+  pDn=false;
+});
+cv.addEventListener('wheel',e=>{R=Math.max(5,Math.min(26,R+e.deltaY*.013));setCam();},{passive:true});
+
+cv.addEventListener('mousemove',e=>{
+  if(pDn)return;
+  const r=cv.getBoundingClientRect();
+  const mx=(e.clientX-r.left)/r.width*2-1,my=-((e.clientY-r.top)/r.height)*2+1;
+  const rc=new THREE.Raycaster();rc.setFromCamera({x:mx,y:my},cam);
+  const hits=rc.intersectObjects(cm);const nh=hits.length?hits[0].object:null;
+  if(nh!==hov){
+    if(hov)hov.material.emissiveIntensity=.4;
+    hov=nh;
+    if(hov){hov.material.emissiveIntensity=1.5;cv.style.cursor='pointer';}
+    else cv.style.cursor='default';
+  }
+});
+
+const cont=document.getElementById('sc');
+function resize(){const w=cont.offsetWidth,h=cont.offsetHeight;ren.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}
+window.addEventListener('resize',resize);
+
+const tv=new THREE.Vector3();
+function updLbs(){
+  const w=cont.offsetWidth,h=cont.offsetHeight;
+  cm.forEach((m,i)=>{
+    tv.copy(m.position);tv.y+=1.3;tv.project(cam);
+    lb[i].style.left=((tv.x*.5+.5)*w)+'px';
+    lb[i].style.top=((-.5*tv.y+.5)*h)+'px';
+    lb[i].style.display=tv.z<1?'block':'none';
+  });
+}
+
+let T=0;
+function anim(){
+  requestAnimationFrame(anim);T+=.012;
+  cm.forEach((m,i)=>{
+    if(Math.abs(m.scale.x-1)<.02){m.rotation.y=Math.sin(T*.4+i*.9)*.05;m.rotation.x=Math.sin(T*.3+i*.6)*.03;}
+    m.position.y=.1+Math.sin(T*.65+i*1.1)*.05;
+  });
+  pl.intensity=1.5+Math.sin(T*1.5)*.4;
+  updLbs();ren.render(sc,cam);
+}
+
+// ---- Init: fetch case definitions from Flask backend --------------------
+async function init(){
+  const res=await fetch('/api/cases');
+  CASES=await res.json();
+  const cbsDiv=document.getElementById('cbs');
+  cbsDiv.innerHTML='';
+  CASES.forEach((c,i)=>{const b=document.createElement('button');b.className='cb';b.textContent=c.name;b.onclick=()=>build(i);cbsDiv.appendChild(b);});
+  resize();build(0);anim();
+}
+init();
+</script>
+</body>
+</html>
