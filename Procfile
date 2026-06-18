@@ -1,0 +1,1 @@
+web: gunicorn solver:app
